@@ -203,6 +203,214 @@ def create_visualizations(data, global_means, temporal_mean):
     
     return fig
 
+def create_detailed_analysis(data, global_means, temporal_mean):
+    """Create detailed weather analysis plots"""
+    print("✓ Creating detailed weather analysis...")
+    
+    # Convert to more reasonable units for visualization
+    data_display = data / 1000  # Convert to more manageable scale
+    temporal_mean_display = temporal_mean / 1000
+    global_means_display = global_means / 1000
+    
+    fig = plt.figure(figsize=(20, 15))
+    
+    # 1. Time series with reference lines
+    ax1 = plt.subplot(3, 3, 1)
+    plt.plot(global_means_display, 'b-', linewidth=2)
+    plt.axhline(y=np.mean(global_means_display), color='r', linestyle='--', alpha=0.7, label='Mean')
+    plt.axhline(y=np.percentile(global_means_display, 95), color='orange', linestyle='--', alpha=0.7, label='95th percentile')
+    plt.title('Global Mean Time Series (Scaled)')
+    plt.xlabel('Time Index')
+    plt.ylabel('Value (scaled units)')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # 2. Spatial distribution
+    ax2 = plt.subplot(3, 3, 2)
+    im2 = plt.imshow(temporal_mean_display, cmap='RdYlBu_r', aspect='auto')
+    plt.title('Temporal Mean Distribution')
+    plt.xlabel('Longitude Index')
+    plt.ylabel('Latitude Index')
+    plt.colorbar(im2, shrink=0.8)
+    
+    # 3. First time slice
+    ax3 = plt.subplot(3, 3, 3)
+    im3 = plt.imshow(data_display[:, :, 0], cmap='RdYlBu_r', aspect='auto')
+    plt.title('First Time Slice')
+    plt.colorbar(im3, shrink=0.8)
+    
+    # 4. Middle time slice
+    ax4 = plt.subplot(3, 3, 4)
+    mid_idx = data.shape[2] // 2
+    im4 = plt.imshow(data_display[:, :, mid_idx], cmap='RdYlBu_r', aspect='auto')
+    plt.title(f'Middle Time Slice (t={mid_idx})')
+    plt.colorbar(im4, shrink=0.8)
+    
+    # 5. Last time slice
+    ax5 = plt.subplot(3, 3, 5)
+    im5 = plt.imshow(data_display[:, :, -1], cmap='RdYlBu_r', aspect='auto')
+    plt.title('Last Time Slice')
+    plt.colorbar(im5, shrink=0.8)
+    
+    # 6. Standard deviation map
+    ax6 = plt.subplot(3, 3, 6)
+    std_map = np.std(data_display, axis=2)
+    im6 = plt.imshow(std_map, cmap='plasma', aspect='auto')
+    plt.title('Standard Deviation')
+    plt.colorbar(im6, shrink=0.8)
+    
+    # 7. Histogram
+    ax7 = plt.subplot(3, 3, 7)
+    sample_data = data_display.flatten()[::10000]
+    plt.hist(sample_data[sample_data > 0], bins=50, alpha=0.7, color='skyblue')
+    plt.title('Data Distribution (Sample)')
+    plt.xlabel('Value (scaled)')
+    plt.ylabel('Frequency')
+    plt.yscale('log')
+    
+    # 8. Seasonal cycle
+    ax8 = plt.subplot(3, 3, 8)
+    if len(global_means_display) >= 12:
+        months = len(global_means_display)
+        years = months // 12
+        if years > 0:
+            monthly_means = np.zeros(12)
+            for month in range(12):
+                monthly_data = global_means_display[month::12]
+                monthly_means[month] = np.mean(monthly_data)
+            
+            plt.plot(range(1, 13), monthly_means, 'o-', linewidth=2, markersize=8)
+            plt.title('Seasonal Cycle')
+            plt.xlabel('Month')
+            plt.ylabel('Mean Value (scaled)')
+            plt.xticks(range(1, 13))
+            plt.grid(True, alpha=0.3)
+    
+    # 9. Geographic overlay
+    ax9 = plt.subplot(3, 3, 9)
+    im9 = plt.imshow(temporal_mean_display, cmap='RdYlBu_r', aspect='auto')
+    
+    # Add coordinate grid
+    lat_ticks = np.arange(0, 720, 120)
+    lon_ticks = np.arange(0, 1440, 240)
+    lat_labels = [f"{90 - (tick * 0.25):.0f}°N" for tick in lat_ticks]
+    lon_labels = [f"{-180 + (tick * 0.25):.0f}°E" for tick in lon_ticks]
+    
+    plt.xticks(lon_ticks, lon_labels, rotation=45)
+    plt.yticks(lat_ticks, lat_labels)
+    plt.title('Geographic Grid Overlay')
+    plt.colorbar(im9, shrink=0.8)
+    
+    plt.tight_layout()
+    plt.savefig('analysis/detailed_weather_analysis.png', dpi=300, bbox_inches='tight')
+    print("✓ Saved detailed analysis as 'analysis/detailed_weather_analysis.png'")
+    
+    return fig
+
+def create_final_comprehensive_plots(data, global_means):
+    """Create final comprehensive analysis plots"""
+    print("✓ Creating final comprehensive analysis...")
+    
+    # Scale data for visualization
+    data_scaled = data / 1000
+    global_means_scaled = global_means / 1000
+    temporal_mean_scaled = np.mean(data_scaled, axis=2)
+    
+    # Find extreme events
+    max_idx = np.argmax(global_means)
+    min_idx = np.argmin(global_means)
+    
+    fig = plt.figure(figsize=(24, 18))
+    
+    # 1. Time series with extremes marked
+    ax1 = plt.subplot(3, 4, 1)
+    plt.plot(global_means_scaled, 'b-', linewidth=2)
+    plt.scatter([max_idx], [global_means_scaled[max_idx]], color='red', s=100, zorder=5, label='Max event')
+    plt.scatter([min_idx], [global_means_scaled[min_idx]], color='blue', s=100, zorder=5, label='Min event')
+    plt.title('Global Time Series with Extremes')
+    plt.xlabel('Time Index')
+    plt.ylabel('Value (scaled)')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # 2. Spatial mean
+    ax2 = plt.subplot(3, 4, 2)
+    im2 = plt.imshow(temporal_mean_scaled, cmap='RdBu_r', aspect='auto')
+    plt.title('Temporal Mean')
+    plt.colorbar(im2, shrink=0.8)
+    
+    # 3. Extreme high event
+    ax3 = plt.subplot(3, 4, 3)
+    im3 = plt.imshow(data_scaled[:, :, max_idx], cmap='Reds', aspect='auto')
+    plt.title(f'Extreme High Event (t={max_idx})')
+    plt.colorbar(im3, shrink=0.8)
+    
+    # 4. Extreme low event
+    ax4 = plt.subplot(3, 4, 4)
+    im4 = plt.imshow(data_scaled[:, :, min_idx], cmap='Blues', aspect='auto')
+    plt.title(f'Extreme Low Event (t={min_idx})')
+    plt.colorbar(im4, shrink=0.8)
+    
+    # 5. Anomaly map
+    ax5 = plt.subplot(3, 4, 5)
+    anomaly = data_scaled[:, :, max_idx] - temporal_mean_scaled
+    im5 = plt.imshow(anomaly, cmap='RdBu_r', aspect='auto')
+    plt.title('Anomaly Pattern')
+    plt.colorbar(im5, shrink=0.8)
+    
+    # 6. Variability map
+    ax6 = plt.subplot(3, 4, 6)
+    variability = np.std(data_scaled, axis=2)
+    im6 = plt.imshow(variability, cmap='plasma', aspect='auto')
+    plt.title('Variability (Std Dev)')
+    plt.colorbar(im6, shrink=0.8)
+    
+    # 7. Distribution
+    ax7 = plt.subplot(3, 4, 7)
+    sample_data = data_scaled.flatten()[::5000]
+    plt.hist(sample_data[sample_data > 0], bins=100, alpha=0.7, color='green')
+    plt.title('Value Distribution')
+    plt.xlabel('Value (scaled)')
+    plt.ylabel('Frequency')
+    plt.yscale('log')
+    
+    # 8. Seasonal analysis
+    ax8 = plt.subplot(3, 4, 8)
+    if len(global_means_scaled) >= 12:
+        months = len(global_means_scaled)
+        years = months // 12
+        if years > 0:
+            monthly_means = np.zeros(12)
+            monthly_std = np.zeros(12)
+            for month in range(12):
+                monthly_data = global_means_scaled[month::12]
+                monthly_means[month] = np.mean(monthly_data)
+                monthly_std[month] = np.std(monthly_data)
+            
+            plt.errorbar(range(1, 13), monthly_means, yerr=monthly_std, 
+                        marker='o', capsize=5, linewidth=2)
+            plt.title('Seasonal Pattern')
+            plt.xlabel('Month')
+            plt.ylabel('Mean ± Std (scaled)')
+            plt.xticks(range(1, 13))
+            plt.grid(True, alpha=0.3)
+    
+    # 9-12. Time evolution snapshots
+    time_indices = [0, data.shape[2]//4, data.shape[2]//2, data.shape[2]-1]
+    titles = ['Early Period', 'Quarter Point', 'Mid Period', 'Late Period']
+    
+    for i, (time_idx, title) in enumerate(zip(time_indices, titles)):
+        ax = plt.subplot(3, 4, 9 + i)
+        im = plt.imshow(data_scaled[:, :, time_idx], cmap='RdYlBu_r', aspect='auto')
+        plt.title(f'{title} (t={time_idx})')
+        plt.colorbar(im, shrink=0.6)
+    
+    plt.tight_layout()
+    plt.savefig('analysis/final_mystery_analysis.png', dpi=300, bbox_inches='tight')
+    print("✓ Saved final analysis as 'analysis/final_mystery_analysis.png'")
+    
+    return fig
+
 def identify_weather_events(data, global_means):
     """Identify interesting weather events"""
     print("\n" + "=" * 60)
@@ -238,7 +446,24 @@ def identify_weather_events(data, global_means):
         if data.shape[0] == 720 and data.shape[1] == 1440:
             max_lat = 90 - (max_loc[0] * 0.25)
             max_lon = -180 + (max_loc[1] * 0.25)
-            print(f"Hotspot location: {max_lat:.2f}°N, {max_lon:.2f}°E")
+            print(f"Hotspot during extreme global mean events: {max_lat:.2f}°N, {max_lon:.2f}°E")
+    
+    # Find the TRUE global maximum location
+    print(f"\nGLOBAL MAXIMUM ANALYSIS:")
+    global_max_location = np.unravel_index(np.argmax(data), data.shape)
+    if data.shape[0] == 720 and data.shape[1] == 1440:
+        true_max_lat = 90 - (global_max_location[0] * 0.25)
+        true_max_lon = -180 + (global_max_location[1] * 0.25)
+        true_max_time = global_max_location[2]
+        true_max_value = data[global_max_location]
+        print(f"True global maximum: {true_max_value:.2f} units")
+        print(f"Location: {true_max_lat:.2f}°N, {true_max_lon:.2f}°E")
+        print(f"Time index: {true_max_time}")
+        
+        # Geographic interpretation
+        if 70 <= true_max_lat <= 80 and 130 <= true_max_lon <= 140:
+            print(f"✓ ARCTIC REGION: Laptev Sea, Northern Siberia")
+            print(f"  This makes meteorological sense for extreme precipitation!")
 
 def main():
     """
@@ -270,7 +495,9 @@ def main():
         
         # Create visualizations
         try:
-            fig = create_visualizations(data, global_means, temporal_mean)
+            fig1 = create_visualizations(data, global_means, temporal_mean)
+            fig2 = create_detailed_analysis(data, global_means, temporal_mean)
+            fig3 = create_final_comprehensive_plots(data, global_means)
             plt.show()
         except Exception as e:
             print(f"Visualization error (matplotlib may not be available): {e}")
